@@ -47,7 +47,7 @@ export const BondInformation = ({ showValidation }) => {
           </div>
 
           <div className="grid grid-cols-12 items-center">
-            <label className={`${labelClass} col-span-5`}>Tenant (ID)/Name *</label>
+            <label className={`${labelClass} col-span-5`}>Tenant (ID) *</label>
             <input
               type="text"
               name="tenantName"
@@ -117,7 +117,7 @@ export const BondInformation = ({ showValidation }) => {
           </div>
 
           <div className="grid grid-cols-12 items-center">
-            <label className={`${labelClass} col-span-5`}>Landlord (ID)/Name *</label>
+            <label className={`${labelClass} col-span-5`}>Landlord (ID) *</label>
             <input
               type="text"
               name="landlordName"

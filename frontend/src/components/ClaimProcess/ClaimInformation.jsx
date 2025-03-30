@@ -3,7 +3,7 @@ import { Switch } from '@headlessui/react';
 import { FaCalendarAlt, FaLink, FaPlus, FaMinus } from 'react-icons/fa';
 import { useClaimProcess } from '../../context/ClaimProcessContext';
 
-const ClaimInformation = () => {
+export const ClaimInformation = ({ showValidation }) => {
   const { formData, handleChange, completedSteps, handleSubmit, handleFileUpload, error, loading } = useClaimProcess();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const moveInVideoRef = useRef(null);
@@ -12,10 +12,10 @@ const ClaimInformation = () => {
   const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
 
   // Style classes
+  const inputClass = "w-full px-0 py-1 focus:outline-none border-b border-gray-300";
   const labelClass = "text-sm text-black block mb-2 text-left whitespace-nowrap pr-4 font-medium";
-  const getInputClass = (fieldName) => `w-full px-0 pb-1 pt-0 text-sm border-b ${errors[fieldName] ? 'border-red-500' : 'border-gray-300'} focus:outline-none text-left placeholder-gray-400`;
   const readOnlyClass = "w-full px-0 pb-1 pt-0 text-sm border-b border-gray-300 focus:outline-none text-left";
-  const getDateInputClass = (fieldName) => `w-full px-0 pb-1 pt-0 text-sm border-b ${errors[fieldName] ? 'border-red-500' : 'border-gray-300'} focus:outline-none text-left placeholder-gray-400`;
+  const getDateInputClass = (fieldName) => `w-full px-0 pb-1 pt-0 text-sm border-b ${showValidation && !formData[fieldName] ? 'border-red-500' : 'border-gray-300'} focus:outline-none text-left placeholder-gray-400`;
   const columnClass = "flex-1 space-y-6";
 
   const validateForm = () => {
@@ -42,10 +42,19 @@ const ClaimInformation = () => {
 
     // Additional date validations
     if (formData.checkInDate && formData.checkOutDate) {
-      const checkIn = new Date(formatDateForInput(formData.checkInDate));
-      const checkOut = new Date(formatDateForInput(formData.checkOutDate));
+      const checkIn = new Date(formData.checkInDate);
+      const checkOut = new Date(formData.checkOutDate);
       if (checkOut <= checkIn) {
         newErrors.checkOutDate = 'Check-out date must be after check-in date';
+      }
+    }
+
+    // Validate check-out notice date
+    if (formData.checkOutNoticeDate && formData.checkOutDate) {
+      const noticeDate = new Date(formData.checkOutNoticeDate);
+      const checkOut = new Date(formData.checkOutDate);
+      if (noticeDate > checkOut) {
+        newErrors.checkOutNoticeDate = 'Notice date must be before or on check-out date';
       }
     }
 
@@ -70,16 +79,32 @@ const ClaimInformation = () => {
   };
 
   const handleDateChange = (e, field) => {
-    const date = new Date(e.target.value);
-    const formattedDate = date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit'
-    });
-    handleChange({ target: { name: field, value: formattedDate } });
-    // Clear error when field is filled
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    const date = e.target.value; // Get the raw date value from input
+    handleChange({ target: { name: field, value: date } });
+    
+    // Validate dates after change
+    if (field === 'checkInDate' || field === 'checkOutDate' || field === 'checkOutNoticeDate') {
+      const newErrors = {};
+      
+      // Validate check-in and check-out dates
+      if (formData.checkInDate && formData.checkOutDate) {
+        const checkIn = new Date(formData.checkInDate);
+        const checkOut = new Date(formData.checkOutDate);
+        if (checkOut <= checkIn) {
+          newErrors.checkOutDate = 'Check-out date must be after check-in date';
+        }
+      }
+
+      // Validate check-out notice date
+      if (formData.checkOutNoticeDate && formData.checkOutDate) {
+        const noticeDate = new Date(formData.checkOutNoticeDate);
+        const checkOut = new Date(formData.checkOutDate);
+        if (noticeDate > checkOut) {
+          newErrors.checkOutNoticeDate = 'Notice date must be before or on check-out date';
+        }
+      }
+
+      setErrors(prev => ({ ...prev, ...newErrors }));
     }
   };
 
@@ -119,15 +144,8 @@ const ClaimInformation = () => {
     }
   };
 
-  // Convert DD/MM/YY to YYYY-MM-DD for date inputs
-  const formatDateForInput = (dateStr) => {
-    if (!dateStr) return '';
-    const [day, month, year] = dateStr.split('/');
-    return `20${year}-${month}-${day}`;
-  };
-
   return (
-    <section className="bg-white rounded-lg p-4 md:p-8 mt-4">
+    <section id="claimInformation" className="bg-white rounded-lg p-4 md:p-8 mt-4">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-base font-bold
@@ -150,231 +168,142 @@ const ClaimInformation = () => {
       )}
 
       {!isCollapsed && (
-        <form onSubmit={handleFormSubmit} className="space-y-8 md:space-y-12 border border-black rounded-lg p-4 md:p-8">
-          {/* First Row - Date Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Check-in Date
-                {errors.checkInDate && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
-              <div className="relative w-full">
-                <input
-                  type="date"
-                  value={formatDateForInput(formData?.checkInDate) || '2024-03-31'}
-                  onChange={(e) => handleDateChange(e, 'checkInDate')}
-                  className={getDateInputClass('checkInDate')}
-                  required
-                />
-                {errors.checkInDate && (
-                  <p className="text-red-500 text-xs mt-1">{errors.checkInDate}</p>
-                )}
-                <button className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
+        <div className="space-y-8 md:space-y-12 border border-black rounded-lg p-4 md:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Check In Date *</label>
+              <input
+                type="date"
+                name="checkInDate"
+                value={formData.checkInDate || ''}
+                onChange={(e) => handleDateChange(e, 'checkInDate')}
+                className={getDateInputClass('checkInDate')}
+              />
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Check-Out Date
-                {errors.checkOutDate && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
-              <div className="relative w-full">
-                <input
-                  type="date"
-                  value={formatDateForInput(formData?.checkOutDate) || '2024-03-31'}
-                  onChange={(e) => handleDateChange(e, 'checkOutDate')}
-                  className={getDateInputClass('checkOutDate')}
-                  required
-                />
-                {errors.checkOutDate && (
-                  <p className="text-red-500 text-xs mt-1">{errors.checkOutDate}</p>
-                )}
-                <button className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Check Out Date *</label>
+              <input
+                type="date"
+                name="checkOutDate"
+                value={formData.checkOutDate || ''}
+                onChange={(e) => handleDateChange(e, 'checkOutDate')}
+                className={getDateInputClass('checkOutDate')}
+              />
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>Stay Days</label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Stay Days</label>
               <input
                 type="text"
                 name="stayDays"
-                value={formData?.stayDays || 'XX days'}
-                className={getInputClass('stayDays')}
+                value={formData.stayDays || 'XX days'}
+                className={readOnlyClass}
                 disabled
               />
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Check out Notice Date
-                {errors.checkOutNoticeDate && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
-              <div className="relative w-full">
-                <input
-                  type="date"
-                  value={formatDateForInput(formData?.checkOutNoticeDate) || ''}
-                  onChange={(e) => handleDateChange(e, 'checkOutNoticeDate')}
-                  className={getDateInputClass('checkOutNoticeDate')}
-                  required
-                />
-                {errors.checkOutNoticeDate && (
-                  <p className="text-red-500 text-xs mt-1">{errors.checkOutNoticeDate}</p>
-                )}
-                <button className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Check out Notice Date *</label>
+              <input
+                type="date"
+                name="checkOutNoticeDate"
+                value={formData.checkOutNoticeDate || ''}
+                onChange={(e) => handleDateChange(e, 'checkOutNoticeDate')}
+                className={getDateInputClass('checkOutNoticeDate')}
+              />
             </div>
-          </div>
 
-          {/* Second Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Lock in Period (L&L)
-                {errors.lockInPeriod && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Lock in Period (L&L) *</label>
               <input
                 type="text"
                 name="lockInPeriod"
-                value={formData?.lockInPeriod || ''}
+                value={formData.lockInPeriod || ''}
                 onChange={(e) => handleInputChange(e, 'lockInPeriod')}
-                className={getInputClass('lockInPeriod')}
+                className={inputClass}
                 placeholder="Enter period"
-                required
               />
-              {errors.lockInPeriod && (
-                <p className="text-red-500 text-xs mt-1">{errors.lockInPeriod}</p>
-              )}
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Notice Period (L&L)
-                {errors.noticePeriod && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Notice Period (L&L) *</label>
               <input
                 type="text"
                 name="noticePeriod"
-                value={formData?.noticePeriod || ''}
+                value={formData.noticePeriod || ''}
                 onChange={(e) => handleInputChange(e, 'noticePeriod')}
-                className={getInputClass('noticePeriod')}
+                className={inputClass}
                 placeholder="Enter period"
-                required
               />
-              {errors.noticePeriod && (
-                <p className="text-red-500 text-xs mt-1">{errors.noticePeriod}</p>
-              )}
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Breach in Lock in period Days
-                {errors.breachLockInDays && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Breach in Lock in period Days *</label>
               <input
                 type="text"
                 name="breachLockInDays"
-                value={formData?.breachLockInDays || ''}
+                value={formData.breachLockInDays || ''}
                 onChange={(e) => handleInputChange(e, 'breachLockInDays')}
-                className={getInputClass('breachLockInDays')}
+                className={inputClass}
                 placeholder="Enter days"
-                required
               />
-              {errors.breachLockInDays && (
-                <p className="text-red-500 text-xs mt-1">{errors.breachLockInDays}</p>
-              )}
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Breach in Notice Period Days
-                {errors.breachNoticeDays && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Breach in Notice Period Days *</label>
               <input
                 type="text"
                 name="breachNoticeDays"
-                value={formData?.breachNoticeDays || ''}
+                value={formData.breachNoticeDays || ''}
                 onChange={(e) => handleInputChange(e, 'breachNoticeDays')}
-                className={getInputClass('breachNoticeDays')}
+                className={inputClass}
                 placeholder="Enter days"
-                required
               />
-              {errors.breachNoticeDays && (
-                <p className="text-red-500 text-xs mt-1">{errors.breachNoticeDays}</p>
-              )}
             </div>
-          </div>
 
-          {/* Third Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Actual Locking Period Working
-                {errors.actualLockingPeriod && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Actual Locking Period Working *</label>
               <input
                 type="text"
                 name="actualLockingPeriod"
-                value={formData?.actualLockingPeriod || ''}
+                value={formData.actualLockingPeriod || ''}
                 onChange={(e) => handleInputChange(e, 'actualLockingPeriod')}
-                className={getInputClass('actualLockingPeriod')}
+                className={inputClass}
                 placeholder="Enter period"
-                required
               />
-              {errors.actualLockingPeriod && (
-                <p className="text-red-500 text-xs mt-1">{errors.actualLockingPeriod}</p>
-              )}
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Actual Notice Period Working
-                {errors.actualNoticePeriod && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Actual Notice Period Working *</label>
               <input
                 type="text"
                 name="actualNoticePeriod"
-                value={formData?.actualNoticePeriod || ''}
+                value={formData.actualNoticePeriod || ''}
                 onChange={(e) => handleInputChange(e, 'actualNoticePeriod')}
-                className={getInputClass('actualNoticePeriod')}
+                className={inputClass}
                 placeholder="Enter period"
-                required
               />
-              {errors.actualNoticePeriod && (
-                <p className="text-red-500 text-xs mt-1">{errors.actualNoticePeriod}</p>
-              )}
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Move-In Video Link
-                {errors.moveInVideo && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
-              <div className="relative w-full">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Move-In Video Link *</label>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   name="moveInVideo"
-                  value={formData?.moveInVideo || ''}
+                  value={formData.moveInVideo || ''}
                   onChange={(e) => handleInputChange(e, 'moveInVideo')}
-                  className={getInputClass('moveInVideo')}
+                  className={inputClass}
                   placeholder="Upload video"
-                  readOnly
-                  required
                 />
-                {errors.moveInVideo && (
-                  <p className="text-red-500 text-xs mt-1">{errors.moveInVideo}</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => moveInVideoRef.current?.click()}
+                  className="p-2 bg-[#B4C424] text-white rounded"
+                >
+                  <FaLink />
+                </button>
                 <input
                   type="file"
                   ref={moveInVideoRef}
@@ -382,35 +311,27 @@ const ClaimInformation = () => {
                   className="hidden"
                   accept="video/*"
                 />
-                <button 
-                  type="button"
-                  className="absolute right-0 top-1/2 -translate-y-1/2"
-                  onClick={() => handleFileClick('moveIn')}
-                >
-                  <FaLink className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
               </div>
             </div>
 
-            <div className={columnClass}>
-              <label className={labelClass}>
-                Move Out Video Link
-                {errors.moveOutVideo && <span className="text-red-500 text-xs ml-1">*</span>}
-              </label>
-              <div className="relative w-full">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Move Out Video Link *</label>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   name="moveOutVideo"
-                  value={formData?.moveOutVideo || ''}
+                  value={formData.moveOutVideo || ''}
                   onChange={(e) => handleInputChange(e, 'moveOutVideo')}
-                  className={getInputClass('moveOutVideo')}
+                  className={inputClass}
                   placeholder="Upload video"
-                  readOnly
-                  required
                 />
-                {errors.moveOutVideo && (
-                  <p className="text-red-500 text-xs mt-1">{errors.moveOutVideo}</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => moveOutVideoRef.current?.click()}
+                  className="p-2 bg-[#B4C424] text-white rounded"
+                >
+                  <FaLink />
+                </button>
                 <input
                   type="file"
                   ref={moveOutVideoRef}
@@ -418,32 +339,11 @@ const ClaimInformation = () => {
                   className="hidden"
                   accept="video/*"
                 />
-                <button 
-                  type="button"
-                  className="absolute right-0 top-1/2 -translate-y-1/2"
-                  onClick={() => handleFileClick('moveOut')}
-                >
-                  <FaLink className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end mt-8">
-            <button
-              type="submit"
-              disabled={loading}
-              className={`px-6 py-2 bg-[#B4C424] text-white rounded hover:bg-opacity-90 transition-colors ${
-                loading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {loading ? 'Submitting...' : 'Submit'}
-            </button>
-          </div>
-        </form>
+        </div>
       )}
     </section>
   );
 };
-
-export default ClaimInformation;

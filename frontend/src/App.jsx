@@ -1,8 +1,8 @@
 import React from 'react';
 import { ClaimProcessProvider } from './context/ClaimProcessContext';
-import ClaimProcess from './components/ClaimProcess/ClaimProcess';
+import { ClaimProcess } from './components/ClaimProcess/ClaimProcess';
 
-function App() {
+export const App = () => {
   return (
     <ClaimProcessProvider>
       <div className="min-h-screen bg-gray-50">
@@ -10,6 +10,4 @@ function App() {
       </div>
     </ClaimProcessProvider>
   );
-}
-
-export default App;
+};

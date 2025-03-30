@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaCheck } from 'react-icons/fa';
 
-const Stepper = ({ steps, activeStep, completedSteps }) => {
+export const Stepper = ({ steps, activeStep, completedSteps }) => {
   return (
     <div className="fixed left-0 top-0 w-[20vw] h-screen border-r border-black pt-8 bg-white">
       <div className="flex flex-col space-y-8 px-8">
@@ -40,6 +40,4 @@ const Stepper = ({ steps, activeStep, completedSteps }) => {
       </div>
     </div>
   );
-};
-
-export default Stepper; 
+}; 
